@@ -1,19 +1,24 @@
 SUMMARY: 
-This files must be stored on E:\XML\Builds\* 
+These files must be stored on E:\XML\Builds\*
 
 
 
 
 CHANGES: 
 
-You'll have to edit the following line s
+GrabXML.ps1 now accepts parameters instead of hardcoded values.
 
+Required parameters:
+  -Server    : SQL Server hostname or instance name
+  -Database  : Target database name (e.g. Jenkins)
+  -User      : SQL login with write access
+  -Password  : Password for the SQL login (SecureString)
 
-LINE 1: SQL server user with write access (different than SQL service account) 
-LINE 2: Password for the account in LINE 1
-LINE 3: Server name of your SQL server (my SQL server is local to this script) 
+Optional parameters:
+  -WorkloadPath  : Path to workload.txt (default: E:\XML\Builds\workload.txt)
+  -BuildDataPath : Path to BuildData.xml output (default: E:\XML\Builds\BuildData.xml)
+  -SP1           : Stored procedure name (default: USP_CREATE_JOB_DATA)
 
-
-LINE 11 (OPTIONAL): If you changed the path than you'll want to update this line 
-
-
+Example usage:
+  $pwd = Read-Host -AsSecureString -Prompt "SQL Password"
+  .\GrabXML.ps1 -Server "localhost" -Database "Jenkins" -User "sa" -Password $pwd

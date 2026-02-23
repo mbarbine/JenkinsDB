@@ -1,0 +1,22 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# PowerShell
+*.ps1xml
+
+# SQL Server data/log files
+*.mdf
+*.ldf
+*.bak
+
+# Temporary build data
+*.xml.bak
+workload.txt
+
+# Editor files
+*.suo
+*.user
+.vs/
+*.swp
+*~
