@@ -3,8 +3,8 @@ THEN execute the view queries
 THEN execute the stored procedure queries
 THEN create the agent jobs 
 
-it is absolutely critical that you line up the SQL service accoun with the account that is executing the task scheduler and that 
-the account has the appopriate privileges. 
+it is absolutely critical that you line up the SQL service account with the account that is executing the task scheduler and that 
+the account has the appropriate privileges. 
 
 I've listed instructions in each folder of what to change to get this to work in your environment. 
 
