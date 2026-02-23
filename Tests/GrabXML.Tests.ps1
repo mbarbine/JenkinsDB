@@ -37,26 +37,43 @@ Describe 'GrabXML.ps1' {
         It 'has a mandatory -Server parameter' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'Server' }
             $p | Should -Not -BeNullOrEmpty
-            $mandatory = $p.Attributes | Where-Object {
-                $_ -is [System.Management.Automation.Language.AttributeAst] -and
-                $_.TypeName.Name -eq 'Parameter'
-            }
-            $mandatory | Should -Not -BeNullOrEmpty
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -Not -BeNullOrEmpty
         }
 
         It 'has a mandatory -Database parameter' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'Database' }
             $p | Should -Not -BeNullOrEmpty
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -Not -BeNullOrEmpty
         }
 
         It 'has a mandatory -User parameter' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'User' }
             $p | Should -Not -BeNullOrEmpty
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -Not -BeNullOrEmpty
         }
 
-        It 'has a mandatory -Password parameter' {
+        It 'has a mandatory -Password parameter of type SecureString' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'Password' }
             $p | Should -Not -BeNullOrEmpty
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -Not -BeNullOrEmpty
+            $typeAttr = $p.Attributes | Where-Object { $_ -is [System.Management.Automation.Language.TypeConstraintAst] }
+            $typeAttr.TypeName.Name | Should -Be 'SecureString'
         }
 
         It 'has an optional -WorkloadPath parameter with a default' {

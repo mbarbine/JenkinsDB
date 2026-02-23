@@ -12,7 +12,7 @@ Required parameters:
   -Server    : SQL Server hostname or instance name
   -Database  : Target database name (e.g. Jenkins)
   -User      : SQL login with write access
-  -Password  : Password for the SQL login
+  -Password  : Password for the SQL login (SecureString)
 
 Optional parameters:
   -WorkloadPath  : Path to workload.txt (default: E:\XML\Builds\workload.txt)
@@ -20,4 +20,5 @@ Optional parameters:
   -SP1           : Stored procedure name (default: USP_CREATE_JOB_DATA)
 
 Example usage:
-  .\GrabXML.ps1 -Server "localhost" -Database "Jenkins" -User "sa" -Password "yourpassword"
+  $pwd = Read-Host -AsSecureString -Prompt "SQL Password"
+  .\GrabXML.ps1 -Server "localhost" -Database "Jenkins" -User "sa" -Password $pwd
