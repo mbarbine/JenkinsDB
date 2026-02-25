@@ -37,7 +37,7 @@ EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Powershe
 		@retry_attempts=0, 
 		@retry_interval=0, 
 		@os_run_priority=0, @subsystem=N'CmdExec', 
-		@command=N'"Powershell.exe" invoke-WebRequest -uri http://jenkins.qanet.mandiant.com:8079/view/All/cc.xml -outfile E:\XML\Builds\cc.xml
+		@command=N'PowerShell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "& { $JenkinsUser = $env:JENKINS_USER; $JenkinsToken = $env:JENKINS_TOKEN; $params = @{ Uri = ''http://<JenkinsServer>:<JenkinsPort>/view/All/cc.xml''; OutFile = ''E:\XML\Builds\cc.xml''; UseBasicParsing = $true }; if ($JenkinsUser -and $JenkinsToken) { $pair = ${JenkinsUser}:${JenkinsToken}; $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair)); $params[''Headers''] = @{ Authorization = ''Basic '' + $encoded } }; Invoke-WebRequest @params }"
 ', 
 		@flags=0
 IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
@@ -82,7 +82,7 @@ EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Schedule
 		@retry_attempts=0, 
 		@retry_interval=0, 
 		@os_run_priority=0, @subsystem=N'CmdExec', 
-		@command=N'schtasks /run /TN  Task', 
+		@command=N'PowerShell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "E:\XML\Builds\GrabXML.ps1" -Server <SqlServer> -Database Jenkins -User <SqlUser> -Password (ConvertTo-SecureString "<SqlPassword>" -AsPlainText -Force) -WorkloadSP USP_CREATEWORKLOAD -JenkinsUser %JENKINS_USER% -JenkinsToken %JENKINS_TOKEN%', 
 		@flags=0
 IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
 EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1

@@ -102,6 +102,20 @@ Describe 'GrabXML.ps1' {
             $p | Should -Not -BeNullOrEmpty
         }
 
+        It 'has an optional -WorkloadSP parameter' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'WorkloadSP' }
+            $p | Should -Not -BeNullOrEmpty
+        }
+
+        It '-WorkloadSP is not mandatory' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'WorkloadSP' }
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -BeNullOrEmpty
+        }
+
         It '-JenkinsUser is not mandatory' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'JenkinsUser' }
             $isMandatory = $p.Attributes |
@@ -201,8 +215,13 @@ Describe 'GrabXML.ps1' {
     }
 
     Context 'Loop structure' {
-        It 'iterates over entries in the workload file' {
-            $script:Content | Should -Match 'foreach.*Get-Content.*\$WorkloadPath'
+        It 'reads workload entries from WorkloadPath file when WorkloadSP is not set' {
+            $script:Content | Should -Match 'Get-Content.*\$WorkloadPath'
+        }
+
+        It 'reads workload entries from the database when WorkloadSP is set' {
+            $script:Content | Should -Match '\$WorkloadSP'
+            $script:Content | Should -Match 'workloadCommand'
         }
 
         It 'fetches each URL and saves the result to BuildDataPath' {
