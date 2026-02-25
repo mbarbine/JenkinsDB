@@ -10,6 +10,11 @@ Describe 'GrabXML.ps1' {
             'E-Colon-Slash XML' `
             'builds' `
             'GrabXML.ps1'))
+        $script:Content = Get-Content $script:ScriptPath -Raw
+        $script:ast = [System.Management.Automation.Language.Parser]::ParseFile(
+            $script:ScriptPath, [ref]$null, [ref]$null
+        )
+        $script:params = $script:ast.ParamBlock.Parameters
     }
 
     Context 'Script file' {
@@ -27,13 +32,6 @@ Describe 'GrabXML.ps1' {
     }
 
     Context 'Parameters' {
-        BeforeAll {
-            $script:ast = [System.Management.Automation.Language.Parser]::ParseFile(
-                $script:ScriptPath, [ref]$null, [ref]$null
-            )
-            $script:params = $script:ast.ParamBlock.Parameters
-        }
-
         It 'has a mandatory -Server parameter' {
             $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'Server' }
             $p | Should -Not -BeNullOrEmpty
@@ -93,19 +91,131 @@ Describe 'GrabXML.ps1' {
             $p | Should -Not -BeNullOrEmpty
             $p.DefaultValue.Value | Should -Be 'USP_CREATE_JOB_DATA'
         }
+
+        It 'has an optional -JenkinsUser parameter' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'JenkinsUser' }
+            $p | Should -Not -BeNullOrEmpty
+        }
+
+        It 'has an optional -JenkinsToken parameter' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'JenkinsToken' }
+            $p | Should -Not -BeNullOrEmpty
+        }
+
+        It '-JenkinsUser is not mandatory' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'JenkinsUser' }
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -BeNullOrEmpty
+        }
+
+        It '-JenkinsToken is not mandatory' {
+            $p = $script:params | Where-Object { $_.Name.VariablePath.UserPath -eq 'JenkinsToken' }
+            $isMandatory = $p.Attributes |
+                Where-Object { $_ -is [System.Management.Automation.Language.AttributeAst] -and $_.TypeName.Name -eq 'Parameter' } |
+                ForEach-Object { $_.NamedArguments | Where-Object { $_.ArgumentName -eq 'Mandatory' -and $_.Argument.ToString() -eq '$true' } } |
+                Select-Object -First 1
+            $isMandatory | Should -BeNullOrEmpty
+        }
     }
 
     Context 'Connection string' {
         It 'does not contain hardcoded empty credentials' {
-            $content = Get-Content $script:ScriptPath -Raw
-            $content | Should -Not -Match '\$User\s*=\s*[''"]sa[''"]'
-            $content | Should -Not -Match '\$Password\s*=\s*[''"][''"]'
+            $script:Content | Should -Not -Match '\$User\s*=\s*[''"]sa[''"]'
+            $script:Content | Should -Not -Match '\$Password\s*=\s*[''"][''"]'
         }
 
         It 'uses parameterized connection string values' {
-            $content = Get-Content $script:ScriptPath -Raw
-            $content | Should -Match 'Server=\$Server'
-            $content | Should -Match 'Database=\$Database'
+            $script:Content | Should -Match 'Server=\$Server'
+            $script:Content | Should -Match 'Database=\$Database'
+        }
+
+        It 'uses User ID in the connection string' {
+            $script:Content | Should -Match 'User ID=\$User'
+        }
+
+        It 'sets Integrated Security to False' {
+            $script:Content | Should -Match 'Integrated Security=False'
+        }
+    }
+
+    Context 'Web request' {
+        It 'uses -UseBasicParsing with Invoke-WebRequest' {
+            $script:Content | Should -Match 'UseBasicParsing'
+        }
+
+        It 'wraps Invoke-WebRequest in a try/catch block' {
+            $script:Content | Should -Match '\btry\b'
+            $script:Content | Should -Match '\bcatch\b'
+        }
+
+        It 'continues to next URL on web request failure' {
+            $script:Content | Should -Match '\bcontinue\b'
+        }
+
+        It 'supports Jenkins Basic authentication headers' {
+            $script:Content | Should -Match 'Authorization'
+        }
+
+        It 'encodes Jenkins credentials as Base64 for the Authorization header' {
+            $script:Content | Should -Match 'Base64'
+        }
+
+        It 'guards authentication header behind a JenkinsUser/JenkinsToken check' {
+            $script:Content | Should -Match '\$JenkinsUser.*\$JenkinsToken|\$JenkinsToken.*\$JenkinsUser'
+        }
+
+        It 'passes -OutFile to Invoke-WebRequest using BuildDataPath' {
+            $script:Content | Should -Match '\$BuildDataPath'
+        }
+    }
+
+    Context 'SQL execution' {
+        It 'sets CommandType to StoredProcedure' {
+            $script:Content | Should -Match 'StoredProcedure'
+        }
+
+        It 'closes the SqlConnection in a finally block' {
+            $script:Content | Should -Match '\bfinally\b'
+            $script:Content | Should -Match '\.Close\(\)'
+        }
+
+        It 'handles SQL errors with a descriptive catch message' {
+            $script:Content | Should -Match 'Error executing the stored procedure'
+        }
+
+        It 'converts SecureString password to plain text via SecureStringToBSTR' {
+            $script:Content | Should -Match 'SecureStringToBSTR'
+            $script:Content | Should -Match 'PtrToStringAuto'
+        }
+
+        It 'assigns the stored procedure name to CommandText' {
+            $script:Content | Should -Match 'CommandText\s*=\s*\$SP1'
+        }
+
+        It 'assigns the SqlConnection to the SqlCommand' {
+            $script:Content | Should -Match 'SqlCommand\.Connection\s*=\s*\$SqlConnection'
+        }
+    }
+
+    Context 'Loop structure' {
+        It 'iterates over entries in the workload file' {
+            $script:Content | Should -Match 'foreach.*Get-Content.*\$WorkloadPath'
+        }
+
+        It 'fetches each URL and saves the result to BuildDataPath' {
+            $script:Content | Should -Match 'Invoke-WebRequest'
+            $script:Content | Should -Match '\$BuildDataPath'
+        }
+
+        It 'reports progress for each URL being fetched' {
+            $script:Content | Should -Match 'Fetching build data'
+        }
+
+        It 'reports progress when processing SQL data' {
+            $script:Content | Should -Match 'Processing Build Data'
         }
     }
 }
